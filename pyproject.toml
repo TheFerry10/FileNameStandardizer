@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "data-sync"
+name = "filenamestandardizer"
 version = "0.1.0"
 description = ""
 authors = ["Malte Sauerwein <m.sauerwein@live.de>"]
@@ -7,7 +7,6 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-ipykernel = "^6.29.5"
 
 
 [build-system]
