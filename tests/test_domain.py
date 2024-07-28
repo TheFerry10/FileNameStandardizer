@@ -1,4 +1,4 @@
-import domain
+import filenamestandardizer.domain as domain
 import datetime
 import pytest
 
