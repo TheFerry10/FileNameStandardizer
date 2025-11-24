@@ -1,15 +1,34 @@
 [tool.poetry]
-name = "data-sync"
+name = "filenamestandardizer"
 version = "0.1.0"
-description = ""
-authors = ["Malte Sauerwein <m.sauerwein@live.de>"]
+description = "A tool to standardize filenames according to user-defined rules."
+authors = ["Malte Zerr <m.sauerwein@live.de>"]
 readme = "README.md"
+packages = [{ include = "filenamestandardizer" }]
 
 [tool.poetry.dependencies]
-python = "^3.10"
-ipykernel = "^6.29.5"
+python = "^3.12"
+azure-storage-blob = "^12.27.1"
+python-dotenv = "^1.2.1"
+azure-core = "^1.36.0"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.4.0"
+mypy = "^1.18.2"
+black = "^25.11.0"
+flake8 = "^7.3.0"
+coverage = "^7.12.0"
+bandit = "^1.9.1"
+pylint = "^4.0.3"
+pytest = "^9.0.1"
+
+
+
+[tool.bandit]
+exclude_dirs = [".venv", "venv", "htmlcov", "docs"]
+skips = ["B101"]
 
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=2.1.3"]
 build-backend = "poetry.core.masonry.api"
