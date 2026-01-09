@@ -167,3 +167,5 @@ scratch/
 __azurite_db*
 __blobstorage__
 __queuestorage__
+
+.vscode/

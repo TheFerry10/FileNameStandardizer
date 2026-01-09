@@ -1,0 +1,7 @@
+# Uncomment to enable Azure Monitor OpenTelemetry
+# Ref: aka.ms/functions-azure-monitor-python
+# azure-monitor-opentelemetry
+
+azure-functions
+azurefunctions-extensions-bindings-blob
+../dist/filenamestandardizer-0.1.0-py3-none-any.whl
