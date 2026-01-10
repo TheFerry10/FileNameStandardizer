@@ -5,6 +5,7 @@ import time
 
 import azure.functions as func
 import azurefunctions.extensions.bindings.blob as blob
+from azure.identity import ClientSecretCredential
 from azure.storage.blob import BlobClient, BlobServiceClient
 
 from filenamestandardizer import domain
@@ -12,10 +13,16 @@ from filenamestandardizer import domain
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
 
-CONNECTION_STRING = os.environ["STORAGE_CONNECTION"]
 PROCESSED_CONTAINER = "processed"
 FAILED_CONTAINER = "failed"
-blob_service_client = BlobServiceClient.from_connection_string(CONNECTION_STRING)
+
+account_url = os.getenv("AZURE_STORAGEBLOB_RESOURCEENDPOINT")
+tenant_id = os.getenv("AZURE_TENANT_ID")
+client_id = os.getenv("AZURE_CLIENT_ID")
+client_secret = os.getenv("AZURE_CLIENT_SECRET")
+credential = ClientSecretCredential(tenant_id, client_id, client_secret)
+
+blob_service_client = BlobServiceClient(account_url=account_url, credential=credential)
 
 
 def copy_blob(target_blob_client: BlobClient, source_blob_url: str) -> None:
