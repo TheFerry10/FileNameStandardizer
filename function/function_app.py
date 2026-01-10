@@ -5,7 +5,7 @@ import time
 
 import azure.functions as func
 import azurefunctions.extensions.bindings.blob as blob
-from azure.identity import ClientSecretCredential
+from azure.identity import ManagedIdentityCredential
 from azure.storage.blob import BlobClient, BlobServiceClient
 
 from filenamestandardizer import domain
@@ -16,12 +16,8 @@ app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 PROCESSED_CONTAINER = "processed"
 FAILED_CONTAINER = "failed"
 
-account_url = os.getenv("AZURE_STORAGEBLOB_RESOURCEENDPOINT")
-tenant_id = os.getenv("AZURE_TENANT_ID")
-client_id = os.getenv("AZURE_CLIENT_ID")
-client_secret = os.getenv("AZURE_CLIENT_SECRET")
-credential = ClientSecretCredential(tenant_id, client_id, client_secret)
-
+account_url = os.getenv("STORAGE_CONNECTION__blobServiceUri")
+credential = ManagedIdentityCredential()
 blob_service_client = BlobServiceClient(account_url=account_url, credential=credential)
 
 
