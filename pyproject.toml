@@ -11,6 +11,8 @@ python = "^3.12"
 azure-storage-blob = "^12.27.1"
 python-dotenv = "^1.2.1"
 azure-core = "^1.36.0"
+azure-storage-file-share = "^12.23.1"
+azure-identity = "^1.25.1"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.4.0"

@@ -54,12 +54,12 @@ def test_extract_index() -> None:
         (
             "20240707_121110.jpg",
             domain.ANDROID_SCHEMA,
-            "2024/07/20240707T121110_E3B0C442_0000.jpg",
+            "2024/07/20240707T121110_UNKNOWN_0000.jpg",
         ),
         (
             "IMG-20240721-WA0007.jpg",
             domain.WHATSAPP_SCHEMA,
-            "2024/07/20240721T000000_E3B0C442_0007.jpg",
+            "2024/07/20240721T000000_UNKNOWN_0007.jpg",
         ),
     ],
 )
@@ -76,11 +76,10 @@ def test_file_name_standardization_with_schema(
 
 
 def test_file_name_standardization_with_schema_and_identifier() -> None:
-    # Device0 -> D5555C1A
     original_file_name = "20240707_121110.jpg"
     file_name_schema = domain.ANDROID_SCHEMA
     identifier = "Device0"
-    expected_target_file_name = "2024/07/20240707T121110_D5555C1A_0000.jpg"
+    expected_target_file_name = "2024/07/20240707T121110_Device0_0000.jpg"
     target_file_name = domain.standardize_file_name(
         original_file_name, file_name_schema, identifier
     )
@@ -92,19 +91,19 @@ def test_file_name_standardization_with_schema_and_identifier() -> None:
     [
         (
             "20240707_121110.jpg",
-            "2024/07/20240707T121110_E3B0C442_0000.jpg",
+            "2024/07/20240707T121110_UNKNOWN_0000.jpg",
         ),
         (
             "20240707_121110.mp4",
-            "2024/07/20240707T121110_E3B0C442_0000.mp4",
+            "2024/07/20240707T121110_UNKNOWN_0000.mp4",
         ),
         (
             "IMG-20240721-WA0007.jpg",
-            "2024/07/20240721T000000_E3B0C442_0007.jpg",
+            "2024/07/20240721T000000_UNKNOWN_0007.jpg",
         ),
         (
             "VID-20240721-WA0007.mp4",
-            "2024/07/20240721T000000_E3B0C442_0007.mp4",
+            "2024/07/20240721T000000_UNKNOWN_0007.mp4",
         ),
     ],
 )

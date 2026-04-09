@@ -148,7 +148,7 @@ def identify_file_pattern(file_name: str) -> FileNameSchema:
 def standardize_file_name(
     file_name: str,
     file_name_schema: FileNameSchema | None = None,
-    source_identifier: str = "",
+    source_id: str = "UNKNOWN",
 ) -> StandardizedFileName:
     """Parse source file and return standardized representation"""
     if file_name_schema is None:
@@ -164,7 +164,6 @@ def standardize_file_name(
         index = extract_index(file_name, index_pattern=file_name_schema.index_pattern)
 
     extension = file_name.split(".")[-1]
-    source_id = compute_source_id(source_identifier)
 
     return StandardizedFileName.from_components(
         timestamp=dt, source=source_id, sequence=index, extension=extension
@@ -193,8 +192,9 @@ def standardize_files_in_directory(
     for file_path in files:
         file_name = Path(file_path).name
         try:
+            source_id = compute_source_id(source_identifier)
             standardized_file_name = standardize_file_name(
-                file_name, source_identifier=source_identifier
+                file_name, source_id=source_id
             )
             standardized_file_map[file_path] = str(standardized_file_name)
         except ValueError:
@@ -204,15 +204,11 @@ def standardize_files_in_directory(
     return standardized_file_map
 
 
-android_mappings = {
-    "whatsAppImages": (
-        "Interner Speicher/Android/media/com.whatsapp/" "WhatsApp/Media/WhatsApp Images"
-    ),
-    "whatsAppVideos": (
-        "Interner Speicher/Android/media/com.whatsapp/" "WhatsApp/Media/WhatsApp Video"
-    ),
-    "dcim": "Interner Speicher/DCIM",
-    "camera": "Interner Speicher/DCIM/Camera",
+ANDROID_MAPPINGS = {
+    "whatsAppImages": "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp/Images",
+    "whatsAppVideos": "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp/Videos",
+    "dcim": "DCIM",
+    "camera": "DCIM/Camera",
 }
 
 
@@ -230,3 +226,18 @@ def extract_device_identifier_from_path(mtp_path: Path) -> str:
     if match:
         return match.group(1)
     raise ValueError(f"Cannot extract device identifier from path {mtp_path}")
+
+
+def extract_source_id_from_blob_name(blob_name: str) -> str:
+    """
+    Extract source identifier from blob name.
+
+    Args:
+        blob_name: Blob name in format devices/SOURCE_ID/filename.ext
+    Returns:
+        SOURCE_ID string
+    """
+    match = re.match(r"devices/([^/]+)/", blob_name)
+    if match:
+        return match.group(1)
+    raise ValueError(f"Cannot extract source ID from blob name {blob_name}")
