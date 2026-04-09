@@ -158,13 +158,6 @@ def standardize_uploaded_file(blob_client: blob.BlobClient) -> None:
         # Copy blob (server-side, efficient for large media files)
         copy_blob(target_blob_client, SOURCE_CONTAINER, blob_client.blob_name)
 
-        # Delete source blob after successful copy initiation
-        source_blob_client = blob_service_client.get_blob_client(
-            container=SOURCE_CONTAINER, blob=blob_client.blob_name
-        )
-        source_blob_client.delete_blob()
-        logging.info("Deleted source blob: %s", blob_client.blob_name)
-
     except Exception as e:
         logging.error(
             "Error processing blob %s: %s",
