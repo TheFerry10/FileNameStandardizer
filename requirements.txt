@@ -6,4 +6,3 @@ azure-functions
 azurefunctions-extensions-bindings-blob
 azure-identity
 azure-storage-blob
-./libs/filenamestandardizer-0.1.0-py3-none-any.whl

@@ -6,3 +6,6 @@ __queuestorage__
 local.settings.json
 test
 .venv
+tests
+.pre-commit-config.yaml
+.flake8
