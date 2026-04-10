@@ -126,7 +126,7 @@ def identify_file_pattern(file_name: str) -> FileNameSchema:
 def standardize_file_name(
     file_name: str,
     file_name_schema: FileNameSchema | None = None,
-    source_id: str = "UNKNOWN",
+    device_id: str = "UNKNOWN",
 ) -> StandardizedFileName:
     """Parse source file and return standardized representation"""
     if file_name_schema is None:
@@ -144,5 +144,5 @@ def standardize_file_name(
     extension = file_name.split(".")[-1]
 
     return StandardizedFileName.from_components(
-        timestamp=dt, source=source_id, sequence=index, extension=extension
+        timestamp=dt, source=device_id, sequence=index, extension=extension
     )
