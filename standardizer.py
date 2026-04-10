@@ -1,11 +1,8 @@
-import hashlib
 import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from glob import glob
 from pathlib import Path
-from typing import Optional
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -20,7 +17,7 @@ class FileNameSchema:
     file_name_pattern: str
     timestamp_pattern: str
     timestamp_format: str
-    index_pattern: Optional[str] = None
+    index_pattern: str | None = None
 
 
 ANDROID_SCHEMA = FileNameSchema(
@@ -66,7 +63,7 @@ class StandardizedFileName:
         """Complete path: YYYY/MM/YYYYMMDDThhmmss_SOURCE_SEQUENCE.ext"""
         return self.prefix + self.base_name
 
-    def to_path(self, base_dir: Optional[Path] = None) -> Path:
+    def to_path(self, base_dir: Path | None = None) -> Path:
         """Convert to Path object, optionally under a base directory"""
         p = Path(self.full_path)
         return base_dir / p if base_dir else p
@@ -87,25 +84,6 @@ class StandardizedFileName:
 
     def __repr__(self) -> str:
         return f"StandardizedFileName('{self.full_path}')"
-
-
-def compute_source_id(identifier: str, length: int = 8) -> str:
-    """
-    Generate a compact source ID from an identifier (device serial, etc.).
-
-    Args:
-        identifier: Raw device/source identifier (serial number, etc.)
-        length: Number of hex characters (default 8 = 4 bytes)
-
-    Returns:
-        Uppercase hex string of specified length
-
-    Example:
-        >>> compute_source_id("SM-G991B/ABC123DEF456")
-        'A1B2C3D4'
-    """
-    hash_digest = hashlib.sha256(identifier.encode("utf-8")).hexdigest()
-    return hash_digest[:length].upper()
 
 
 def extract_datetime_string(file_name: str, datetime_pattern: str) -> str:
@@ -148,7 +126,7 @@ def identify_file_pattern(file_name: str) -> FileNameSchema:
 def standardize_file_name(
     file_name: str,
     file_name_schema: FileNameSchema | None = None,
-    source_id: str = "UNKNOWN",
+    device_id: str = "UNKNOWN",
 ) -> StandardizedFileName:
     """Parse source file and return standardized representation"""
     if file_name_schema is None:
@@ -166,78 +144,5 @@ def standardize_file_name(
     extension = file_name.split(".")[-1]
 
     return StandardizedFileName.from_components(
-        timestamp=dt, source=source_id, sequence=index, extension=extension
+        timestamp=dt, source=device_id, sequence=index, extension=extension
     )
-
-
-def read_files_from_directory(
-    directory_path: str, extensions: list[str] | None = None
-) -> list[str]:
-    if extensions is None:
-        extensions = [".*"]
-    pattern = [f"*{ext}" for ext in extensions]
-    files = []
-    for search_pattern in pattern:
-        files.extend(glob(str(Path(directory_path) / search_pattern)))
-    return files
-
-
-def standardize_files_in_directory(
-    source_directory_path: str,
-    extensions: list[str] | None = None,
-    source_identifier: str = "",
-) -> dict[str, str]:
-    files = read_files_from_directory(source_directory_path, extensions)
-    standardized_file_map = {}
-    for file_path in files:
-        file_name = Path(file_path).name
-        try:
-            source_id = compute_source_id(source_identifier)
-            standardized_file_name = standardize_file_name(
-                file_name, source_id=source_id
-            )
-            standardized_file_map[file_path] = str(standardized_file_name)
-        except ValueError:
-            logging.warning(
-                "File %s does not match any known schema. Skipping.", file_name
-            )
-    return standardized_file_map
-
-
-ANDROID_MAPPINGS = {
-    "whatsAppImages": "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp/Images",
-    "whatsAppVideos": "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp/Videos",
-    "dcim": "DCIM",
-    "camera": "DCIM/Camera",
-}
-
-
-def get_mtp_mount_path(gvfs_path: str = "/run/user/1000/gvfs/") -> Path:
-    """Get the MTP mount path from gvfs directory."""
-    mtp_devices = list(Path(gvfs_path).iterdir())
-    if not mtp_devices:
-        raise FileNotFoundError("No MTP devices found in /run/user/1000/gvfs/")
-    return mtp_devices[0]
-
-
-def extract_device_identifier_from_path(mtp_path: Path) -> str:
-    """Extract device identifier from MTP path."""
-    match = re.search(r"mtp:host=([^/]+)", str(mtp_path))
-    if match:
-        return match.group(1)
-    raise ValueError(f"Cannot extract device identifier from path {mtp_path}")
-
-
-def extract_source_id_from_blob_name(blob_name: str) -> str:
-    """
-    Extract source identifier from blob name.
-
-    Args:
-        blob_name: Blob name in format devices/SOURCE_ID/filename.ext
-    Returns:
-        SOURCE_ID string
-    """
-    match = re.match(r"devices/([^/]+)/", blob_name)
-    if match:
-        return match.group(1)
-    raise ValueError(f"Cannot extract source ID from blob name {blob_name}")
