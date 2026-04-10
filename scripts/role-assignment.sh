@@ -4,7 +4,8 @@ set -euo pipefail
 # Assign required RBAC roles for the Function App on the storage account.
 
 USER_ID=$(az ad signed-in-user show --query id -o tsv)
-ACCOUNT_ID=$(az storage account show -n mymedia --query id -o tsv)
+# PRINCIPAL_ID=$(az functionapp identity show -n "$FUNCTION_APP_NAME" -g "$RESOURCE_GROUP" --query principalId -o tsv)
+ACCOUNT_ID=$(az storage account show -n "$STORAGE_ACCOUNT" --query id -o tsv)
 
 # List current role assignments
 az role assignment list \
