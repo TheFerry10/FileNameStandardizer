@@ -164,6 +164,7 @@ def copy_blob(
     arg_name="blob_client",
     path="landing-zone/devices/{device_id}/{file_name}",
     connection="STORAGE_CONNECTION",
+    source="LogsAndContainerScan",
 )
 def standardize_uploaded_file(blob_client: blob.BlobClient) -> None:
     """Trigger handler for uploaded files requiring name normalization."""
