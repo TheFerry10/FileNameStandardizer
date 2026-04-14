@@ -35,7 +35,7 @@ jobs:
           source venv/bin/activate
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt --target=".python_packages/lib/site-packages"
 
       # Optional: Add step to run tests here
 
@@ -67,7 +67,7 @@ jobs:
         run: |
           unzip release.zip
           rm release.zip
-        
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -82,6 +82,3 @@ jobs:
           app-name: 'func-standardizer-b7243e3c'
           slot-name: 'Production'
           package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-          scm-do-build-during-deployment: true
-          enable-oryx-build: true
-          
