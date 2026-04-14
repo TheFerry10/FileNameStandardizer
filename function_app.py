@@ -23,26 +23,28 @@ COPY_INITIAL_WAIT_SECONDS = 0.5
 COPY_MAX_WAIT_SECONDS = 5.0
 
 
-def _create_blob_service_client() -> BlobServiceClient:
-    """Create a BlobServiceClient for Azure Storage using managed identity."""
-    account_url = os.getenv("STORAGE_CONNECTION__blobServiceUri") or os.getenv(
-        "AZURE_STORAGEBLOB_RESOURCEENDPOINT"
-    )
-    if not account_url:
-        raise RuntimeError(
-            "Missing storage configuration. "
-            "Set STORAGE_CONNECTION__blobServiceUri "
-            "(or AZURE_STORAGEBLOB_RESOURCEENDPOINT) "
-            "for managed identity mode."
+_blob_service_client = None
+
+
+def _get_blob_service_client() -> BlobServiceClient:
+    """Return a lazily-initialized BlobServiceClient (managed identity)."""
+    global _blob_service_client
+    if _blob_service_client is None:
+        account_url = os.getenv("STORAGE_CONNECTION__blobServiceUri") or os.getenv(
+            "AZURE_STORAGEBLOB_RESOURCEENDPOINT"
         )
-
-    return BlobServiceClient(
-        account_url=account_url.rstrip("/") + "/",
-        credential=DefaultAzureCredential(),
-    )
-
-
-blob_service_client = _create_blob_service_client()
+        if not account_url:
+            raise RuntimeError(
+                "Missing storage configuration. "
+                "Set STORAGE_CONNECTION__blobServiceUri "
+                "(or AZURE_STORAGEBLOB_RESOURCEENDPOINT) "
+                "for managed identity mode."
+            )
+        _blob_service_client = BlobServiceClient(
+            account_url=account_url.rstrip("/") + "/",
+            credential=DefaultAzureCredential(),
+        )
+    return _blob_service_client
 
 
 def _extract_blob_path_parts(blob_name: str) -> dict[str, str]:
@@ -92,13 +94,14 @@ def generate_source_sas_url(container_name: str, blob_name: str) -> str:
     """Generate a user delegation SAS URL for the source blob."""
     start_time = datetime.now(timezone.utc)
     expiry_time = start_time + timedelta(hours=1)
-    user_delegation_key = blob_service_client.get_user_delegation_key(
+    client = _get_blob_service_client()
+    user_delegation_key = client.get_user_delegation_key(
         key_start_time=start_time,
         key_expiry_time=expiry_time,
     )
 
     sas_token = generate_blob_sas(
-        account_name=blob_service_client.account_name,
+        account_name=client.account_name,
         container_name=container_name,
         blob_name=blob_name,
         user_delegation_key=user_delegation_key,
@@ -106,7 +109,7 @@ def generate_source_sas_url(container_name: str, blob_name: str) -> str:
         expiry=expiry_time,
     )
 
-    return f"{blob_service_client.url}" f"{container_name}/{blob_name}?{sas_token}"
+    return f"{client.url}" f"{container_name}/{blob_name}?{sas_token}"
 
 
 def copy_blob(
@@ -182,7 +185,7 @@ def standardize_uploaded_file(blob_client: blob.BlobClient) -> None:
         TARGET_CONTAINER_MAPPING,
     )
 
-    target_blob_client = blob_service_client.get_blob_client(
+    target_blob_client = _get_blob_service_client().get_blob_client(
         container=target_location["target_container"],
         blob=target_location["target_file_name"],
     )
