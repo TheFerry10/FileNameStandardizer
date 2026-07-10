@@ -1,0 +1,92 @@
+name: Terraform Infra
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - infra/**
+      - .github/workflows/terraform-infra.yml
+  push:
+    branches:
+      - main
+    paths:
+      - infra/**
+      - .github/workflows/terraform-infra.yml
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: infra
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_3C798445C3CF40C9A4AB7F7D4D241594 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_C2EB7D27D79F49419DF34E0753F96AE7 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_C3DDD9D8A58B4D4EA90F55DDC66AD397 }}
+
+      - name: Terraform fmt check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan (dev)
+        run: terraform plan -input=false -var-file=dev.tfvars
+
+  apply:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: plan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: infra
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_3C798445C3CF40C9A4AB7F7D4D241594 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_C2EB7D27D79F49419DF34E0753F96AE7 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_C3DDD9D8A58B4D4EA90F55DDC66AD397 }}
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform apply (dev)
+        run: terraform apply -auto-approve -input=false -var-file=dev.tfvars
+
+      - name: Capture Terraform outputs
+        run: terraform output -json > terraform-outputs.json
+
+      - name: Upload Terraform outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-outputs
+          path: infra/terraform-outputs.json
