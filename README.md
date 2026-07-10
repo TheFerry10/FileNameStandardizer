@@ -31,6 +31,43 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Infrastructure as Code (Terraform)
+
+Infrastructure provisioning is now Terraform-first.
+
+### What Terraform manages
+
+- Resource group
+- Storage account
+- Containers: `landing-zone`, `processed`, `failed`
+- Linux Function App (Python 3.12)
+- Function App system-assigned managed identity
+- Storage RBAC assignments for Function identity
+- GitHub OIDC app registration, service principal, and federated credential
+
+### First run
+
+```bash
+cd infra
+terraform init
+terraform fmt -recursive
+terraform validate
+terraform plan -var-file=dev.tfvars
+terraform apply -var-file=dev.tfvars
+```
+
+See `infra/README.md` for details.
+
+### GitHub Actions secrets for Terraform workflow
+
+The Terraform workflow currently uses the same Azure OIDC secrets already used by the app deploy workflow:
+
+- `AZUREAPPSERVICE_CLIENTID_3C798445C3CF40C9A4AB7F7D4D241594`
+- `AZUREAPPSERVICE_TENANTID_C2EB7D27D79F49419DF34E0753F96AE7`
+- `AZUREAPPSERVICE_SUBSCRIPTIONID_C3DDD9D8A58B4D4EA90F55DDC66AD397`
+
+You can later migrate to dedicated Terraform-specific secrets after the first rollout.
+
 ## Configuration
 
 ### `local.settings.json`
@@ -90,6 +127,28 @@ func host start
 pytest tests/
 ```
 
+## Deployment verification
+
+After infrastructure and app deployment, run a blob-trigger smoke test:
+
+```bash
+export STORAGE_ACCOUNT_NAME=<your-storage-account>
+./scripts/deployment-smoke-test.sh
+```
+
+The script uploads a sample blob to `landing-zone/devices/{device_id}/...` and checks whether the file appears in `processed` or `failed`.
+
+## App deployment target
+
+The deployment workflow is `.github/workflows/deploy-functionapp.yml`.
+It is wired to run automatically after the `CI` workflow succeeds on `main`.
+
+You can also trigger it manually and override these inputs:
+
+- `resourceGroup`
+- `functionAppName`
+- `runSmokeTest`
+
 ## Storage containers
 
 | Container      | Purpose                                          |
@@ -97,3 +156,7 @@ pytest tests/
 | `landing-zone` | Source — upload files here to trigger processing  |
 | `processed`    | Target for successfully standardized files       |
 | `failed`       | Target for files that couldn't be standardized   |
+
+## Legacy scripts
+
+The shell scripts under `scripts/` are now considered legacy bootstrap helpers. Prefer Terraform in `infra/` for ongoing infrastructure changes.
