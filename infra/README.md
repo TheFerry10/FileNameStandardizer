@@ -30,8 +30,12 @@ terraform apply -var-file=dev.tfvars
 
 ## CI/CD behavior
 
-- `.github/workflows/terraform-infra.yml` runs `fmt`, `validate`, `plan`, and `apply` for `infra/` changes.
-- After `apply`, the workflow exports `terraform output -json` and uploads an artifact named `terraform-outputs`.
+- `.github/workflows/cd-terraform-infra-dev.yml` (`CD - Terraform Infra (dev)`) runs `fmt`, `validate`, and `plan` on pull requests that touch `infra/`.
+- On `main` delivery, `CD - Terraform Infra (dev)` is triggered by successful completion of `CI - Test`, then runs `plan` and `apply`.
+- `.github/workflows/cd-deploy-functionapp-dev.yml` (`CD - Deploy Function App (dev)`) is triggered by successful completion of `CD - Terraform Infra (dev)`.
+- Both workflows run with GitHub Environment `dev` and use the same environment variables for deployment targets:
+  - `RESOURCE_GROUP_NAME`
+  - `FUNCTION_APP_NAME`
 
 ## Required permissions
 

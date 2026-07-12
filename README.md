@@ -140,14 +140,29 @@ The script uploads a sample blob to `landing-zone/devices/{device_id}/...` and c
 
 ## App deployment target
 
-The deployment workflow is `.github/workflows/deploy-functionapp.yml`.
-It is wired to run automatically after the `CI` workflow succeeds on `main`.
+The deployment workflow is `.github/workflows/cd-deploy-functionapp-dev.yml` (`CD - Deploy Function App (dev)`).
+It is wired to run automatically after `.github/workflows/cd-terraform-infra-dev.yml` (`CD - Terraform Infra (dev)`) succeeds for the `main` branch delivery flow.
 
-You can also trigger it manually and override these inputs:
+Expected merge-to-main order is:
 
-- `resourceGroup`
-- `functionAppName`
+1. `CI - Test` runs tests.
+2. `CD - Terraform Infra (dev)` runs plan/apply using shared environment variables.
+3. `CD - Deploy Function App (dev)` uses the same shared environment variables to deploy code.
+
+To enforce CI as a hard gate before merge, enable branch protection on `main` and require the `CI - Test` check.
+
+You can also trigger it manually and set:
+
 - `runSmokeTest`
+
+## Shared GitHub Variables (environment: dev)
+
+Set these variables in GitHub Environment `dev`:
+
+- `RESOURCE_GROUP_NAME`
+- `FUNCTION_APP_NAME`
+
+Both `.github/workflows/cd-terraform-infra-dev.yml` and `.github/workflows/cd-deploy-functionapp-dev.yml` run with `environment: dev` and read these values so infra and app deployment target the same resources.
 
 ## Storage containers
 

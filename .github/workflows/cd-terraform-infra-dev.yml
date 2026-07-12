@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - infra/**
-      - .github/workflows/terraform-infra.yml
+      - .github/workflows/cd-terraform-infra-dev.yml
   workflow_run:
     workflows:
       - CI - Test
