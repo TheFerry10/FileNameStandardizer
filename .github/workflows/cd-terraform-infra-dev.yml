@@ -1,0 +1,130 @@
+name: CD - Terraform Infra (dev)
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - infra/**
+      - .github/workflows/cd-terraform-infra-dev.yml
+  workflow_run:
+    workflows:
+      - CI - Test
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: terraform-infra-main
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      TF_VAR_resource_group_name: ${{ vars.RESOURCE_GROUP_NAME }}
+      TF_VAR_function_app_name: ${{ vars.FUNCTION_APP_NAME }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: infra
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_TF_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TF_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_TF_SUBSCRIPTION_ID }}
+
+      - name: Terraform fmt check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Validate required GitHub Variables
+        run: |
+          [[ -n "${TF_VAR_resource_group_name}" ]] || { echo "Missing repository variable RESOURCE_GROUP_NAME"; exit 1; }
+          [[ -n "${TF_VAR_function_app_name}" ]] || { echo "Missing repository variable FUNCTION_APP_NAME"; exit 1; }
+
+      - name: Terraform plan (dev)
+        run: |
+          terraform plan -input=false \
+            -var-file=dev.tfvars \
+            -var "resource_group_name=${TF_VAR_resource_group_name}" \
+            -var "function_app_name=${TF_VAR_function_app_name}"
+
+  apply:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      TF_VAR_resource_group_name: ${{ vars.RESOURCE_GROUP_NAME }}
+      TF_VAR_function_app_name: ${{ vars.FUNCTION_APP_NAME }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: infra
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_TF_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TF_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_TF_SUBSCRIPTION_ID }}
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Validate required GitHub Variables
+        run: |
+          [[ -n "${TF_VAR_resource_group_name}" ]] || { echo "Missing repository variable RESOURCE_GROUP_NAME"; exit 1; }
+          [[ -n "${TF_VAR_function_app_name}" ]] || { echo "Missing repository variable FUNCTION_APP_NAME"; exit 1; }
+
+      - name: Terraform apply (dev)
+        run: |
+          terraform apply -auto-approve -input=false \
+            -var-file=dev.tfvars \
+            -var "resource_group_name=${TF_VAR_resource_group_name}" \
+            -var "function_app_name=${TF_VAR_function_app_name}"

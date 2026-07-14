@@ -31,6 +31,43 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Infrastructure as Code (Terraform)
+
+Infrastructure provisioning is now Terraform-first.
+
+### What Terraform manages
+
+- Resource group
+- Storage account
+- Containers: `landing-zone`, `processed`, `failed`
+- Linux Function App (Python 3.12)
+- Function App system-assigned managed identity
+- Storage RBAC assignments for Function identity
+- GitHub OIDC app registration, service principal, and federated credential
+
+### First run
+
+```bash
+cd infra
+terraform init
+terraform fmt -recursive
+terraform validate
+terraform plan -var-file=dev.tfvars
+terraform apply -var-file=dev.tfvars
+```
+
+See `infra/README.md` for details.
+
+### GitHub Actions secrets for Terraform workflow
+
+The Terraform workflow currently uses the same Azure OIDC secrets already used by the app deploy workflow:
+
+- `AZUREAPPSERVICE_CLIENTID_3C798445C3CF40C9A4AB7F7D4D241594`
+- `AZUREAPPSERVICE_TENANTID_C2EB7D27D79F49419DF34E0753F96AE7`
+- `AZUREAPPSERVICE_SUBSCRIPTIONID_C3DDD9D8A58B4D4EA90F55DDC66AD397`
+
+You can later migrate to dedicated Terraform-specific secrets after the first rollout.
+
 ## Configuration
 
 ### `local.settings.json`
@@ -90,6 +127,43 @@ func host start
 pytest tests/
 ```
 
+## Deployment verification
+
+After infrastructure and app deployment, run a blob-trigger smoke test:
+
+```bash
+export STORAGE_ACCOUNT_NAME=<your-storage-account>
+./scripts/deployment-smoke-test.sh
+```
+
+The script uploads a sample blob to `landing-zone/devices/{device_id}/...` and checks whether the file appears in `processed` or `failed`.
+
+## App deployment target
+
+The deployment workflow is `.github/workflows/cd-deploy-functionapp-dev.yml` (`CD - Deploy Function App (dev)`).
+It is wired to run automatically after `.github/workflows/cd-terraform-infra-dev.yml` (`CD - Terraform Infra (dev)`) succeeds for the `main` branch delivery flow.
+
+Expected merge-to-main order is:
+
+1. `CI - Test` runs tests.
+2. `CD - Terraform Infra (dev)` runs plan/apply using shared environment variables.
+3. `CD - Deploy Function App (dev)` uses the same shared environment variables to deploy code.
+
+To enforce CI as a hard gate before merge, enable branch protection on `main` and require the `CI - Test` check.
+
+You can also trigger it manually and set:
+
+- `runSmokeTest`
+
+## Shared GitHub Variables (environment: dev)
+
+Set these variables in GitHub Environment `dev`:
+
+- `RESOURCE_GROUP_NAME`
+- `FUNCTION_APP_NAME`
+
+Both `.github/workflows/cd-terraform-infra-dev.yml` and `.github/workflows/cd-deploy-functionapp-dev.yml` run with `environment: dev` and read these values so infra and app deployment target the same resources.
+
 ## Storage containers
 
 | Container      | Purpose                                          |
@@ -97,3 +171,7 @@ pytest tests/
 | `landing-zone` | Source — upload files here to trigger processing  |
 | `processed`    | Target for successfully standardized files       |
 | `failed`       | Target for files that couldn't be standardized   |
+
+## Legacy scripts
+
+The shell scripts under `scripts/` are now considered legacy bootstrap helpers. Prefer Terraform in `infra/` for ongoing infrastructure changes.
